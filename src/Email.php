@@ -499,9 +499,11 @@ class Email
 
     public function getBody(): AbstractPart
     {
+        /*
         if (null !== $body = parent::getBody()) {
             return $body;
         }
+        */
 
         return $this->generateBody();
     }
@@ -512,7 +514,7 @@ class Email
             throw new LogicException('A message must have a text or an HTML part or attachments.');
         }
 
-        parent::ensureValidity();
+        //parent::ensureValidity();
     }
 
     /**
@@ -642,38 +644,5 @@ class Email
 		*/
 
         return $this;
-    }
-
-
-    /**
-     * @internal
-     */
-    public function __serialize(): array
-    {
-        if (\is_resource($this->text)) {
-            $this->text = (new TextPart($this->text))->getBody();
-        }
-
-        if (\is_resource($this->html)) {
-            $this->html = (new TextPart($this->html))->getBody();
-        }
-
-        foreach ($this->attachments as $i => $attachment) {
-            if (isset($attachment['body']) && \is_resource($attachment['body'])) {
-                $this->attachments[$i]['body'] = (new TextPart($attachment['body']))->getBody();
-            }
-        }
-
-        return [$this->text, $this->textCharset, $this->html, $this->htmlCharset, $this->attachments, parent::__serialize()];
-    }
-
-    /**
-     * @internal
-     */
-    public function __unserialize(array $data): void
-    {
-        [$this->text, $this->textCharset, $this->html, $this->htmlCharset, $this->attachments, $parentData] = $data;
-
-        parent::__unserialize($parentData);
     }
 }
