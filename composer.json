@@ -1,0 +1,38 @@
+{
+	"name": "mrpck/email",
+	"type": "library",
+	"description": "The Email Class Library is a high level wrapper around the SmtpClient.",
+	"version": "1.0.0",
+	"homepage": "https://packagist.org/packages/mrpck/email",
+	"keywords": [
+		"email",
+		"SMTP",
+		"SmtpClient",
+		"NetworkCredential",
+		"MailAddress",
+		"POP3",
+		"IMAP",
+		"MIME",
+		"SSL",
+		"TLS",
+		"POP3"
+	],
+	"license": "MIT",
+	"authors": [
+	{
+	  "name": "Michele Rosica",
+	  "email": "michelerosica@gmail.com",
+	  "homepage": "http://michelerosica.altervista.org/",
+	  "role": "Developer"
+	}
+	],
+	"require": {
+		"php": ">=5.4.0"
+	},
+	"autoload": {
+		"psr-4": { "Mrpck\\Email\\": "src/" }
+	},
+	"autoload-dev": {
+		"psr-4": { "Mrpck\\Email\\Test\\": "tests/" }
+	}
+}
