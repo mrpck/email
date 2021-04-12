@@ -1,5 +1,5 @@
 <?php
-//namespace Mrpck\Email;
+namespace Mrpck\Email;
 
 /**
  * The Email Class Library is a high level wrapper around the SmtpClient.
@@ -9,9 +9,9 @@
 class Email 
 {
 	public const PRIORITY_HIGHEST = 1;
-    public const PRIORITY_HIGH = 2;
+    public const PRIORITY_HIGH   = 2;
     public const PRIORITY_NORMAL = 3;
-    public const PRIORITY_LOW = 4;
+    public const PRIORITY_LOW    = 4;
     public const PRIORITY_LOWEST = 5;
 
     private const PRIORITY_MAP = [
@@ -27,7 +27,15 @@ class Email
     private $html;
     private $htmlCharset;
     private $attachments = [];
+	
 	var $ErrorInfo = '';
+	//private $host = "ssl://smtp.example.com";
+	//private $username = "youremail@example.com";
+	//private $password = "your email password";
+	//private $port = 25;
+	private $from;
+	private $recipients = [];
+	private $subject;
 
 	/**
 	* Constructor
@@ -38,44 +46,66 @@ class Email
     }
 
 	/**
-	* destructor
+	* Destructor
 	*/
     function __destruct() 
 	{
 
     }
 
-	public function Send($from, $recipients, $subject, $body, $attachment = null)
+	public function Send($from = null, $recipients = null, $subject = null, $body = null, $attachments = null, $headers = null)
 	{
-		if (!empty($attachment))
-			return SendAttach($from, $recipients, $subject, $body, $attachment);
-		
-		$to      = $recipients;
-		$message = $body;
-		$headers = 'From: webmaster@example.com'     . "\r\n" .
-				   'Reply-To: webmaster@example.com' . "\r\n" .
-				   'X-Mailer: PHP/' . phpversion();
-	
-		if(@mail($to, $subject, $message, $headers)) {
-			return true;
-		} else {
-			$this->ErrorInfo = json_encode(error_get_last());
-			//echo 'Message could not be sent.';
-			//echo 'Mailer Error: ' . $mail->ErrorInfo;
-			//echo 'Mailer Error: ' . json_encode(error_get_last());
+		if (empty($this->from))
+			$this->from = $from;
+		if (empty($this->recipients))
+			$this->recipients = $recipients;
+		if (empty($this->subject))
+			$this->subject = $subject;
+		if (empty($this->html))
+			$this->html = $body;
+		if (empty($this->html) && !empty($this->text))
+			$this->html = $this->text;
+		if (empty($this->attachments) && !empty($attachments)) {
+			if (is_array($attachments))
+				$this->attachments = $attachments;
+			else
+				$this->attach($attachments);
 		}
+
+		if (is_array($this->recipients)) {
+			$this->recipients = implode(',', $this->recipients);
+			//$cc = implode(',', $this->recipients);
+			//$bcc = implode(',', $this->recipients);
+		}
+
+		if (empty($headers) && empty($this->attachments)) {
+			// carriage return type (RFC)
+			$eol = "\r\n";
+
+			// Create email headers
+			$headers = 'From: ' . strip_tags($this->from) . $eol .
+					   'Reply-To: ' . strip_tags($this->from) . $eol .
+					   'X-Mailer: PHP/' . phpversion();
+		}
+
+		if (!empty($this->attachments))
+			return $this->SendAttach($this->from, $this->recipients, $this->subject, $this->html, $this->attachments);
+
+		// Sending email
+		if(@mail($this->recipients, $this->subject, $this->html, $headers)) {
+			return true;
+		} else
+			$this->ErrorInfo = json_encode(error_get_last());
 
 		return false;
 	}
 
-	private function SendAttach($from, $recipients, $subject, $body, $attachment)
+	private function SendAttach($from, $recipients, $subject, $message, $attachments, $headers = null)
 	{
-		$filename = basename($attachment);
-		$mailto   = $recipients;
-		$message  = $body;
-
-		$content = file_get_contents($attachment);
-		$content = chunk_split(base64_encode($content));
+		$attach = $attachments[0];
+		$filename = $attach['name']; //basename($attachment);
+		$content  = $attach['body']; //file_get_contents($attachment);
+		$content  = chunk_split(base64_encode($content));
 
 		// a random hash will be necessary to send mixed content
 		$separator = md5(time());
@@ -84,15 +114,20 @@ class Email
 		$eol = "\r\n";
 
 		// main header (multipart mandatory)
-		$headers = "From: Privacy <no-reply@xtouch.it>" . $eol;
-		$headers .= "MIME-Version: 1.0" . $eol;
-		$headers .= "Content-Type: multipart/mixed; boundary=\"" . $separator . "\"" . $eol;
-		$headers .= "Content-Transfer-Encoding: 7bit" . $eol;
-		$headers .= "This is a MIME encoded message." . $eol;
+		if (empty($headers)) {
+			$headers = "From: " . strip_tags($from) . $eol;
+			$headers .= "MIME-Version: 1.0" . $eol;
+			$headers .= "Content-Type: multipart/mixed; boundary=\"" . $separator . "\"" . $eol;
+			$headers .= "Content-Transfer-Encoding: 7bit" . $eol;
+			$headers .= "This is a MIME encoded message." . $eol;
+		}
 
 		// message
 		$body = "--" . $separator . $eol;
-		$body .= "Content-Type: text/plain; charset=\"iso-8859-1\"" . $eol;
+		if (!empty($this->getTextBody()))
+			$body .= "Content-Type: text/plain; charset=\"iso-8859-1\"" . $eol;
+		else
+			$body .= "Content-Type: text/html; charset=\"iso-8859-1\"" . $eol;
 		$body .= "Content-Transfer-Encoding: 8bit" . $eol;
 		$body .= $message . $eol;
 
@@ -104,10 +139,11 @@ class Email
 		$body .= $content . $eol;
 		$body .= "--" . $separator . "--";
 
-		// SEND Mail
-		if (@mail($mailto, $subject, $body, $headers)) {
+		// Sending email
+		if (@mail($recipients, $subject, $body, $headers)) {
 			return true;
-		}
+		} else
+			$this->ErrorInfo = json_encode(error_get_last());
 
 		return false;
 	}
@@ -117,6 +153,7 @@ class Email
      */
     public function subject(string $subject)
     {
+		$this->subject = $subject;
         return $this->setHeaderBody('Text', 'Subject', $subject);
     }
 
@@ -185,6 +222,7 @@ class Email
      */
     public function from(...$addresses)
     {
+		$this->from = $addresses[0];
         return $this->setListAddressHeaderBody('From', $addresses);
     }
 
@@ -241,6 +279,7 @@ class Email
      */
     public function to(...$addresses)
     {
+		$this->recipients = $addresses;
         return $this->setListAddressHeaderBody('To', $addresses);
     }
 
@@ -478,23 +517,7 @@ class Email
 
     /**
      * Generates an AbstractPart based on the raw body of a message.
-     *
-     * The most "complex" part generated by this method is when there is text and HTML bodies
-     * with related images for the HTML part and some attachments:
-     *
-     * multipart/mixed
-     *         |
-     *         |------------> multipart/related
-     *         |                      |
-     *         |                      |------------> multipart/alternative
-     *         |                      |                      |
-     *         |                      |                       ------------> text/plain (with content)
-     *         |                      |                      |
-     *         |                      |                       ------------> text/html (with content)
-     *         |                      |
-     *         |                       ------------> image/png (with content)
-     *         |
-     *          ------------> application/pdf (with content)
+	 *
      */
     private function generateBody(): AbstractPart
     {
