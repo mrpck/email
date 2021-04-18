@@ -83,13 +83,13 @@ class Email
 			$eol = "\r\n";
 
 			// Create email headers
-			$headers = 'From: ' . strip_tags($this->from) . $eol .
-					   'Reply-To: ' . strip_tags($this->from) . $eol .
+			$headers = 'From: ' . strip_tags($this->from) . $eol . // Sender Email
+					   'Reply-To: ' . strip_tags($this->from) . $eol . // Email addrress to reach back
 					   'X-Mailer: PHP/' . phpversion();
 		}
 
 		if (!empty($this->attachments))
-			return $this->SendAttach($this->from, $this->recipients, $this->subject, $this->html, $this->attachments);
+			return $this->SendAttach($this->from, $this->recipients, $this->subject, $this->html, $this->attachments, $headers);
 
 		// Sending email
 		if(@mail($this->recipients, $this->subject, $this->html, $headers)) {
@@ -115,7 +115,8 @@ class Email
 
 		// main header (multipart mandatory)
 		if (empty($headers)) {
-			$headers = "From: " . strip_tags($from) . $eol;
+			$headers = "From: " . strip_tags($from) . $eol; // Sender Email
+			//$headers .= "Reply-To: ".$reply_to_email."\r\n"; // Email addrress to reach back
 			$headers .= "MIME-Version: 1.0" . $eol;
 			$headers .= "Content-Type: multipart/mixed; boundary=\"" . $separator . "\"" . $eol;
 			$headers .= "Content-Transfer-Encoding: 7bit" . $eol;
@@ -128,8 +129,10 @@ class Email
 			$body .= "Content-Type: text/plain; charset=\"iso-8859-1\"" . $eol;
 		else
 			$body .= "Content-Type: text/html; charset=\"iso-8859-1\"" . $eol;
-		$body .= "Content-Transfer-Encoding: 8bit" . $eol;
-		$body .= $message . $eol;
+		//$body .= "Content-Transfer-Encoding: 8bit" . $eol;
+		//$body .= $message . $eol;
+		$body .= "Content-Transfer-Encoding: base64"  . $eol.$eol; 
+		$body .= chunk_split(base64_encode($message)) . $eol; 
 
 		// attachment
 		$body .= "--" . $separator . $eol;
@@ -499,11 +502,9 @@ class Email
 
     public function getBody(): AbstractPart
     {
-        /*
         if (null !== $body = parent::getBody()) {
             return $body;
         }
-        */
 
         return $this->generateBody();
     }
@@ -514,7 +515,7 @@ class Email
             throw new LogicException('A message must have a text or an HTML part or attachments.');
         }
 
-        //parent::ensureValidity();
+        parent::ensureValidity();
     }
 
     /**
@@ -644,5 +645,38 @@ class Email
 		*/
 
         return $this;
+    }
+
+
+    /**
+     * @internal
+     */
+    public function __serialize(): array
+    {
+        if (\is_resource($this->text)) {
+            $this->text = (new TextPart($this->text))->getBody();
+        }
+
+        if (\is_resource($this->html)) {
+            $this->html = (new TextPart($this->html))->getBody();
+        }
+
+        foreach ($this->attachments as $i => $attachment) {
+            if (isset($attachment['body']) && \is_resource($attachment['body'])) {
+                $this->attachments[$i]['body'] = (new TextPart($attachment['body']))->getBody();
+            }
+        }
+
+        return [$this->text, $this->textCharset, $this->html, $this->htmlCharset, $this->attachments, parent::__serialize()];
+    }
+
+    /**
+     * @internal
+     */
+    public function __unserialize(array $data): void
+    {
+        [$this->text, $this->textCharset, $this->html, $this->htmlCharset, $this->attachments, $parentData] = $data;
+
+        parent::__unserialize($parentData);
     }
 }
