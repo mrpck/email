@@ -2,7 +2,7 @@
 	"name": "mrpck/email",
 	"type": "library",
 	"description": "The Email Class Library is a high level wrapper around the SmtpClient.",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"homepage": "https://packagist.org/packages/mrpck/email",
 	"keywords": [
 		"email",

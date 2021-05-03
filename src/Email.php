@@ -86,6 +86,16 @@ class Email
 			$headers = 'From: ' . strip_tags($this->from) . $eol . // Sender Email
 					   'Reply-To: ' . strip_tags($this->from) . $eol . // Email addrress to reach back
 					   'X-Mailer: PHP/' . phpversion();
+			
+			if (empty($this->text)) {
+				// a random hash will be necessary to send mixed content
+				$separator = md5(time());
+				
+				$headers = "From: " . strip_tags($this->from) . $eol; // Sender Email
+				//$headers .= "Reply-To: ".strip_tags($this->from)."\r\n"; // Email addrress to reach back
+				$headers .= "MIME-Version: 1.0" . $eol;
+				$headers .= 'Content-type: text/html; charset=iso-8859-1' . $eol;
+			}
 		}
 
 		if (!empty($this->attachments))
@@ -502,6 +512,10 @@ class Email
 
     public function getBody(): AbstractPart
     {
+        /*if (null !== $body = parent::getBody()) {
+            return $body;
+        }*/
+
         return $this->generateBody();
     }
 
@@ -510,6 +524,8 @@ class Email
         if (null === $this->text && null === $this->html && !$this->attachments) {
             throw new LogicException('A message must have a text or an HTML part or attachments.');
         }
+
+        //parent::ensureValidity();
     }
 
     /**
@@ -613,13 +629,68 @@ class Email
         return $this;
     }
 
+
     private function addListAddressHeaderBody(string $name, array $addresses)
     {
+		/*
+        if (!$header = $this->getHeaders()->get($name)) {
+            return $this->setListAddressHeaderBody($name, $addresses);
+        }
+        $header->addAddresses(Address::createArray($addresses));
+		*/
+
         return $this;
     }
 
     private function setListAddressHeaderBody(string $name, array $addresses)
     {
+		/*
+        $addresses = Address::createArray($addresses);
+        $headers = $this->getHeaders();
+        if ($header = $headers->get($name)) {
+            $header->setAddresses($addresses);
+        } else {
+            $headers->addMailboxListHeader($name, $addresses);
+        }
+		*/
+
         return $this;
     }
+
+
+    /**
+     * @internal
+     */
+	/*
+    public function __serialize(): array
+    {
+        if (\is_resource($this->text)) {
+            $this->text = (new TextPart($this->text))->getBody();
+        }
+
+        if (\is_resource($this->html)) {
+            $this->html = (new TextPart($this->html))->getBody();
+        }
+
+        foreach ($this->attachments as $i => $attachment) {
+            if (isset($attachment['body']) && \is_resource($attachment['body'])) {
+                $this->attachments[$i]['body'] = (new TextPart($attachment['body']))->getBody();
+            }
+        }
+
+        return [$this->text, $this->textCharset, $this->html, $this->htmlCharset, $this->attachments, parent::__serialize()];
+    }
+	*/
+
+    /**
+     * @internal
+     */
+	/*
+    public function __unserialize(array $data): void
+    {
+        [$this->text, $this->textCharset, $this->html, $this->htmlCharset, $this->attachments, $parentData] = $data;
+
+        parent::__unserialize($parentData);
+    }
+	*/
 }
